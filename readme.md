@@ -1,5 +1,5 @@
 ```lua
-local ConquerorsAPI = loadstring()()
+local ConquerorsAPI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Perthys/TheConquerors3-API/main/main.lua"))()
 
 -- Team {Class}
 -- => [Local Team Only]
