@@ -85,9 +85,7 @@ task.spawn(function()
             
             UnitMovementQueue.UnWaypointed[Index] = nil;
         end
-        
-        print(Dump(UnitMovementQueue.UnWaypointed))
-        
+            
         task.wait(0.5)
     end
 end)
