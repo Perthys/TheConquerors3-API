@@ -300,7 +300,17 @@ local function GetLocalTeam()
     return Team.new(LocalPlayer.Team)
 end
 
-local function GetAllTeams() 
+local function GetAllTeams()
+    local Result = {}
+    
+    for Index, Team in pairs(Teams:GetChildren()) do
+        table.insert(Result, Team.new(Team));
+    end
+    
+    return Result
+end
+
+local function GetAllActiveTeams() 
     local Result = {}
     
     for Index, Player in pairs(Players:GetPlayers()) do
@@ -313,6 +323,7 @@ end
 local TeamAPI = {
     GetLocalTeam = GetLocalTeam;
     GetAllTeams = GetAllTeams;
+    GetAllActiveTeams = GetAllActiveTeams;
 };
 
 local ConquerorsAPI = {
