@@ -21,6 +21,18 @@ local TeamSettings = workspace:FindFirstChild("TeamSettings")
 local EnergyCrystals = Map:FindFirstChild("EnergyCrystals");
 local OilSpots = Map:FindFirstChild("OilSpots");
 
+local RemoteEventNames = {
+    IjliIlI = "Destroy",
+    IIjljj = "SetSkin",
+    ljiIIi = "SetHover",
+    jiIIIIi = "Build",
+    iljiIjj = "DeployUnit",
+    jjlIil = "MoveUnits",
+    jIIlIlI = "Research";
+    llljii = "Chat";
+    lliIIii = "Garrison";
+}
+
 local RemoteFunctionsNames = {
     jjjllji = "BuyRotatingLootBox",
     IIilIII = "BuyLootBox"
@@ -29,6 +41,73 @@ local RemoteFunctionsNames = {
 local Remotes, RemoteFunctions = {}, {}
 
 local Classes = {};
+
+local BuildingDynamicProperties = {
+    ["CFrame"] = function(self)
+        return self.Instance:GetPivot();
+    end;
+    ["Owner"] = function(self)
+        return Team.new(Teams:FindFirstChild(self.Instance.Parent.Name))
+    end;
+}
+
+local Building = {} function Building:__index(Index)
+    local Stats = rawget(self, "Torso");
+    local Stat = Stats:FindFirstChild(Index);
+    
+    return rawget(Building, Index) or (Stat and #Stat:GetChildren() == 0 and Stat.Value) or BuildingDynamicProperties[Index] and BuildingDynamicProperties[Index](self); 
+end
+
+local BuildingCache = {}
+
+function Building.new(BuilingObject)
+    local self = BuildingCache[UnitOBJ] or setmetatable({}, Unit)
+    
+    BuildingCache[BuilingObject] = self;
+    
+    local Torso = BuilingObject:FindFirstChild("Torso");
+    
+    self.Type = BuilingObject.Name;
+    self.Instance = BuilingObject;
+    self.Torso = Torso;
+    self.InternalSignals = {
+        Destroying = BuilingObject.Destroying:Connect(function()
+            self:Destroy();
+        end)
+    };
+
+    return self
+end
+
+function Building:Destroy()
+    BuildingCache[self.Instance] = nil;
+    self.InternalSignals["Destroying"]:Disconnect();
+    return Remotes.Destroy:FireServer(self.Instance);
+end
+
+local BuildingAllowedUnits = {
+    ["Barracks"] = {
+        "Light Soldier";
+        "Heavy Soldier";
+        "Medic";
+        "Repairman";
+        "Construction Soldier";
+        "Anti-Air Soldier";
+        "Sniper";
+        "Scout";
+        "Engineer";
+    };
+};
+
+function Building:DeployUnit(UnitType)
+    return BuildingAllowedUnits[self.Instance.Name] and table.find(BuildingAllowedUnits[self.Instance.Name], UnitType) and Remotes.DeployUnit:FireServer(UnitType, self.Instance)
+end
+
+function Building:Garrison()
+    return Remotes.Garrison:FireServer({self.Instance})
+end
+
+Classes.Building = Building;
 
 local UnitMovementQueue = {
     ["Waypointed"] = {
@@ -102,28 +181,31 @@ local UnitDynamicProperties = {
     ["CFrame"] = function(self)
         return self.Instance:GetPivot();
     end;
+    ["Owner"] = function(self)
+        return Team.new(Teams:FindFirstChild(self.Instance.Parent.Name))
+    end;
 };
 
 function Unit:__index(Index)
     local Stats = rawget(self, "Torso");
     local Stat = Stats:FindFirstChild(Index);
     
-    return rawget(self, Index) or (Stat and #Stat:GetChildren() == 0 and Stat.Value) or UnitDynamicProperties[Index] and UnitDynamicProperties[Index](self); 
+    return rawget(Unit, Index) or (Stat and #Stat:GetChildren() == 0 and Stat.Value) or UnitDynamicProperties[Index] and UnitDynamicProperties[Index](self); 
 end
 
-function Unit.new(UnitOBJ)
-    local self = UnitCache[UnitOBJ] or setmetatable({}, Unit)
+function Unit.new(UnitObject)
+    local self = UnitCache[UnitObject] or setmetatable({}, Unit)
     
-    UnitCache[UnitOBJ] = self;
+    UnitCache[UnitObject] = self;
     
-    local Torso = UnitOBJ:FindFirstChild("Torso");
+    local Torso = UnitObject:FindFirstChild("Torso");
     
-    self.Type = UnitOBJ.Name;
-    self.Instance = UnitOBJ;
+    self.Type = UnitObject.Name;
+    self.Instance = UnitObject;
     self.Torso = Torso;
     self.InternalSignals = {
-        Destroying = UnitOBJ.Destroying:Connect(function()
-            UnitCache[UnitOBJ]:Disconnect();
+        Destroying = UnitObject.Destroying:Connect(function()
+            UnitCache[UnitObject]:Disconnect();
         end)
     };
     
@@ -136,13 +218,31 @@ function Unit:MoveTo(Goal, IsWaypoint) --(Goal: Vector3 [Destination You Want To
 end
 
 function Unit:Destroy()
-    return Remotes.Destroy:FireServer(self.Instance);
-end
-
-function Unit:Destroy()
     UnitCache[self.Instance] = nil;
     self.InternalSignals["Destroying"]:Disconnect();
     Remotes.Destroy:FireServer(self.Instance);
+end
+
+local UnitAllowedUnits = {
+    ["Barracks"] = {
+        "Light Soldier";
+        "Heavy Soldier";
+        "Medic";
+        "Repairman";
+        "Construction Soldier";
+        "Anti-Air Soldier";
+        "Sniper";
+        "Scout";
+        "Engineer";
+    };
+};
+
+function Unit:DeployUnit(UnitType)
+    return UnitAllowedUnits[self.Instance.Name] and table.find(UnitAllowedUnits[self.Instance.Name], UnitType) and Remotes.DeployUnit:FireServer(UnitType, self.Instance)
+end
+
+function Unit:Garrison()
+    return Remotes.Garrison:FireServer({self.Instance})
 end
 
 Classes.Unit = Unit;
@@ -242,11 +342,6 @@ function Team.new(TeamOBJ)
     self.Instance = TeamOBJ;
     self.WorkspaceInstance = TeamsInstance:FindFirstChild(ColorName);
     self.Stats = TeamSettings:FindFirstChild(ColorName);
-    self.InternalSignals = {
-        ["Destroying"] = TeamOBJ.Destroying:Connect(function()
-            TeamCache[TeamOBJ] = nil;
-        end)
-    };
     
     return self;
 end
@@ -271,16 +366,24 @@ function Team:GetResearchTable()
     end
 end
 
-function Team:Destroy()
-    TeamCache[self.Instance] = nil;
-    self.InternalSignals["Destroying"]:Disconnect();
-    Remotes.Destroy:FireServer(self.Instance);
-end
-
 function Team:IsAlliedWith(Team)
     local Allies = self.Stats:FindFirstChild("Allies");
     
     return Allies:FindFirstChild(Team.Name)
+end
+
+function Team:GetAllBuildings()
+    local Result = {};
+
+    for _, Building in pairs(self.WorkspaceInstance:GetChildren()) do
+        if Building:FindFirstChild("PyramidCollisionPart") then
+            
+            print(Result, Classes.Building.new(Building))
+            table.insert(Result, Classes.Building.new(Building))
+        end
+    end
+
+    return Result;
 end
 
 Classes.Team = Team;
@@ -309,52 +412,6 @@ local function GetAllActiveTeams()
     return Result
 end
 
-local getconstants = debug.getconstants;
-local getconstant = debug.getconstant;
-local getupvalue = debug.getupvalue;
-
-local function filtergc(con, return_one) 
-    local r = {};
-    for i,v in pairs(getgc()) do
-        if type(v) == "function" and not is_synapse_function(v) and islclosure(v) then
-            local m = 0;
-            for _, v2 in pairs(getconstants(v)) do
-                if table.find(con, v2) then
-                    m = m + 1;
-                end;
-            end;
-
-            if m >= #con then
-                r[#r+1] = v;
-            end;
-        end;
-    end;
-
-    return return_one and r[1] or r;
-end;
-
-local Reg = {};
-local MoveUnitsF = filtergc({"Position", "isAWaypoint", "isAFormation", "afterFormationPositions" })[2]
-local Build = filtergc({"VIPPlaceBuilding", "Parent"})[2];
-local SetHover = filtergc({"ClearAllChildren", "InvokeServer", "Heartbeat", "wait"}, true);
-local Research = filtergc({"Cash", "Value", "Cost", "Purchased", "FireServer", 0.35 })[1]
-local DeployUnit = filtergc({"Can't make this, it's not researched", "Command Center" }, true);
-
-Reg = getupvalue(MoveUnitsF, 1);
-Remotes.MoveUnits = Reg[getconstant(MoveUnitsF, 1)];
-Remotes.Build = Reg[getconstant(Build, 1)];
-Remotes.SetHover = getupvalue(SetHover, 1)[getconstant(SetHover, 2)];
-Remotes.Research = getupvalue(Research, 6)[getconstant(Research, 10)];
-Remotes.DeployUnit = getupvalue(DeployUnit, 5)[getconstant(DeployUnit, 21)]
-
-for Index, Value in pairs(getgc()) do
-    if type(Value) == "function" and not is_synapse_function(Value) and debug.info(Value, "l") == 3336 then
-        local Proto = getproto(Value, 4);
-        Remotes.SetSkin = Reg[getconstant(Proto, 1)];
-        break;
-    end;
-end;
-
 local TeamAPI = {
     GetLocalTeam = GetLocalTeam;
     GetAllTeams = GetAllTeams;
@@ -366,5 +423,19 @@ local ConquerorsAPI = {
     RemoteFunctions = RemoteFunctions;
     TeamAPI = TeamAPI;
 }
+
+local function SetUpRemotes()
+    for Index, Value in pairs(ReplicatedStorage:GetDescendants()) do
+        if Value:IsA("RemoteEvent") or Value:IsA("RemoteFunction") then
+            if RemoteEventNames[Value.Name] then
+                Remotes[RemoteEventNames[Value.Name]] = Value
+            elseif RemoteFunctionsNames[Value.Name] then
+                RemoteFunctions[RemoteFunctionsNames[Value.Name]] = Value;
+            end
+        end
+    end
+end
+
+SetUpRemotes()
 
 return ConquerorsAPI
