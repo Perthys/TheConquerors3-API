@@ -347,10 +347,10 @@ Remotes.SetHover = getupvalue(SetHover, 1)[getconstant(SetHover, 2)];
 Remotes.Research = getupvalue(Research, 6)[getconstant(Research, 10)];
 Remotes.DeployUnit = getupvalue(DeployUnit, 5)[getconstant(DeployUnit, 21)]
 
-for i,v in getgc() do
-    if type(v) == "function" and not is_synapse_function(v) and debug.info(v, "l") == 3336 then
-        local p = getproto(v, 4);
-        Remotes.SetSkin = Reg[getconstant(p, 1)];
+for Index, Value in pairs(getgc()) do
+    if type(Value) == "function" and not is_synapse_function(Value) and debug.info(Value, "l") == 3336 then
+        local Proto = getproto(Value, 4);
+        Remotes.SetSkin = Reg[getconstant(Proto, 1)];
         break;
     end;
 end;
