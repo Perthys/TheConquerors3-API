@@ -21,17 +21,6 @@ local TeamSettings = workspace:FindFirstChild("TeamSettings")
 local EnergyCrystals = Map:FindFirstChild("EnergyCrystals");
 local OilSpots = Map:FindFirstChild("OilSpots");
 
-local RemoteEventNames = {
-    Iiljjii = "Destroy",
-    IIjljj = "SetSkin",
-    ljiIIi = "SetHover",
-    jiIIIIi = "Build",
-    iljiIjj = "DeployUnit",
-    jjlIil = "MoveUnits",
-    jIIlIlI = "Research";
-    llljii = "Chat";
-}
-
 local RemoteFunctionsNames = {
     jjjllji = "BuyRotatingLootBox",
     IIilIII = "BuyLootBox"
@@ -320,6 +309,52 @@ local function GetAllActiveTeams()
     return Result
 end
 
+local getconstants = debug.getconstants;
+local getconstant = debug.getconstant;
+local getupvalue = debug.getupvalue;
+
+local function filtergc(con, return_one) 
+    local r = {};
+    for i,v in pairs(getgc()) do
+        if type(v) == "function" and not is_synapse_function(v) and islclosure(v) then
+            local m = 0;
+            for _, v2 in pairs(getconstants(v)) do
+                if table.find(con, v2) then
+                    m = m + 1;
+                end;
+            end;
+
+            if m >= #con then
+                r[#r+1] = v;
+            end;
+        end;
+    end;
+
+    return return_one and r[1] or r;
+end;
+
+local Reg = {};
+local MoveUnitsF = filtergc({"Position", "isAWaypoint", "isAFormation", "afterFormationPositions" })[2]
+local Build = filtergc({"VIPPlaceBuilding", "Parent"})[2];
+local SetHover = filtergc({"ClearAllChildren", "InvokeServer", "Heartbeat", "wait"}, true);
+local Research = filtergc({"Cash", "Value", "Cost", "Purchased", "FireServer", 0.35 })[1]
+local DeployUnit = filtergc({"Can't make this, it's not researched", "Command Center" }, true);
+
+Reg = getupvalue(MoveUnitsF, 1);
+Remotes.MoveUnits = Reg[getconstant(MoveUnitsF, 1)];
+Remotes.Build = Reg[getconstant(Build, 1)];
+Remotes.SetHover = getupvalue(SetHover, 1)[getconstant(SetHover, 2)];
+Remotes.Research = getupvalue(Research, 6)[getconstant(Research, 10)];
+Remotes.DeployUnit = getupvalue(DeployUnit, 5)[getconstant(DeployUnit, 21)]
+
+for i,v in getgc() do
+    if type(v) == "function" and not is_synapse_function(v) and debug.info(v, "l") == 3336 then
+        local p = getproto(v, 4);
+        Remotes.SetSkin = Reg[getconstant(p, 1)];
+        break;
+    end;
+end;
+
 local TeamAPI = {
     GetLocalTeam = GetLocalTeam;
     GetAllTeams = GetAllTeams;
@@ -331,19 +366,5 @@ local ConquerorsAPI = {
     RemoteFunctions = RemoteFunctions;
     TeamAPI = TeamAPI;
 }
-
-local function SetUpRemotes()
-    for Index, Value in pairs(ReplicatedStorage:GetDescendants()) do
-        if Value:IsA("RemoteEvent") or Value:IsA("RemoteFunction") then
-            if RemoteEventNames[Value.Name] then
-                Remotes[RemoteEventNames[Value.Name]] = Value
-            elseif RemoteFunctionsNames[Value.Name] then
-                RemoteFunctions[RemoteFunctionsNames[Value.Name]] = Value;
-            end
-        end
-    end
-end
-
-SetUpRemotes()
 
 return ConquerorsAPI
