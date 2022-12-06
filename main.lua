@@ -395,8 +395,8 @@ end
 local function GetAllTeams()
     local Result = {}
     
-    for Index, Team in pairs(Teams:GetChildren()) do
-        table.insert(Result, Team.new(Team));
+    for Index, _Team in pairs(Teams:GetChildren()) do
+        table.insert(Result, Team.new(_Team));
     end
     
     return Result
