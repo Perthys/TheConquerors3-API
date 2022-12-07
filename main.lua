@@ -31,6 +31,7 @@ local RemoteEventNames = {
     jIIlIlI = "Research";
     llljii = "Chat";
     lliIIii = "Garrison";
+    jjjiii = "CancelUnit";
 }
 
 local RemoteFunctionsNames = {
