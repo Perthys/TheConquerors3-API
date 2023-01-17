@@ -1,3 +1,11 @@
+shared.TheConquerorsAPISignals = shared.TheConquerorsAPISignals or {}
+
+for _, Signal in ipairs(shared.TheConquerorsAPISignals) do
+    Signal:Disconnect();
+end
+
+shared.TheConquerorsAPISignals = {};
+
 shared.TheConquerorsAPI = {
     Enabled = false;
 } 
@@ -11,6 +19,7 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 local Dump = loadstring(game:HttpGet('https://raw.githubusercontent.com/strawbberrys/LuaScripts/main/TableDumper.lua'))()
+local Signal = loadstring(game:HttpGet('https://gist.githubusercontent.com/stravant/8820ed7386bd1f9264396f61fc851e3d/raw/9771ee1ec040a7cdfc44ac765714ad5cf5bf6fb0/RobloxSignal.lua'))();
 
 local Map = workspace:FindFirstChild("Map");
 local Geometry = Map:FindFirstChild("Map");
@@ -40,15 +49,27 @@ local RemoteFunctionsNames = {
 }
 
 local Remotes, RemoteFunctions = {}, {}
+local TeamNameCache = {}
 
 local Classes = {};
+
+local function AddConnection(Connection)
+    return table.insert(shared.TheConquerorsAPISignals, Connection);
+end
 
 local BuildingDynamicProperties = {
     ["CFrame"] = function(self)
         return self.Instance:GetPivot();
     end;
     ["Owner"] = function(self)
-        return Team.new(Teams:FindFirstChild(self.Instance.Parent.Name))
+        local TeamName = self.Instance.Parent.Name;
+
+        return TeamNameCache[TeamName]
+    end;
+    ["Team"] = function(self)
+        local TeamName = self.Instance.Parent.Name;
+
+        return TeamNameCache[TeamName]
     end;
 }
 
@@ -62,7 +83,7 @@ end
 local BuildingCache = {}
 
 function Building.new(BuilingObject)
-    local self = BuildingCache[UnitOBJ] or setmetatable({}, Unit)
+    local self = BuildingCache[BuilingObject] or setmetatable({}, Building)
     
     BuildingCache[BuilingObject] = self;
     
@@ -72,9 +93,9 @@ function Building.new(BuilingObject)
     self.Instance = BuilingObject;
     self.Torso = Torso;
     self.InternalSignals = {
-        Destroying = BuilingObject.Destroying:Connect(function()
+        Destroying = AddConnection(BuilingObject.Destroying:Connect(function()
             self:Destroy();
-        end)
+        end))
     };
 
     return self
@@ -82,26 +103,11 @@ end
 
 function Building:Destroy()
     BuildingCache[self.Instance] = nil;
-    self.InternalSignals["Destroying"]:Disconnect();
     return Remotes.Destroy:FireServer(self.Instance);
 end
 
-local BuildingAllowedUnits = {
-    ["Barracks"] = {
-        "Light Soldier";
-        "Heavy Soldier";
-        "Medic";
-        "Repairman";
-        "Construction Soldier";
-        "Anti-Air Soldier";
-        "Sniper";
-        "Scout";
-        "Engineer";
-    };
-};
-
 function Building:DeployUnit(UnitType)
-    return BuildingAllowedUnits[self.Instance.Name] and table.find(BuildingAllowedUnits[self.Instance.Name], UnitType) and Remotes.DeployUnit:FireServer(UnitType, self.Instance)
+    return Remotes.DeployUnit:FireServer(UnitType, self.Instance)
 end
 
 function Building:Garrison()
@@ -183,7 +189,14 @@ local UnitDynamicProperties = {
         return self.Instance:GetPivot();
     end;
     ["Owner"] = function(self)
-        return Team.new(Teams:FindFirstChild(self.Instance.Parent.Name))
+        local TeamName = self.Instance.Parent.Name;
+
+        return TeamNameCache[TeamName]
+    end;
+    ["Team"] = function(self)
+        local TeamName = self.Instance.Parent.Name;
+
+        return TeamNameCache[TeamName]
     end;
 };
 
@@ -205,41 +218,25 @@ function Unit.new(UnitObject)
     self.Instance = UnitObject;
     self.Torso = Torso;
     self.InternalSignals = {
-        Destroying = UnitObject.Destroying:Connect(function()
+        Destroying = AddConnection(UnitObject.Destroying:Connect(function()
             UnitCache[UnitObject]:Disconnect();
-        end)
+        end))
     };
     
     return self;
 end
 
 function Unit:MoveTo(Goal, IsWaypoint) --(Goal: Vector3 [Destination You Want To Move To], IsWaypoint: boolean [If the destination will be followed after the last one is done]) -> (nil)
-    print(Goal, IsWaypoint)
     return AddToQueue(self.Instance, Goal, IsWaypoint)
 end
 
 function Unit:Destroy()
     UnitCache[self.Instance] = nil;
-    self.InternalSignals["Destroying"]:Disconnect();
     Remotes.Destroy:FireServer(self.Instance);
 end
 
-local UnitAllowedUnits = {
-    ["Barracks"] = {
-        "Light Soldier";
-        "Heavy Soldier";
-        "Medic";
-        "Repairman";
-        "Construction Soldier";
-        "Anti-Air Soldier";
-        "Sniper";
-        "Scout";
-        "Engineer";
-    };
-};
-
 function Unit:DeployUnit(UnitType)
-    return UnitAllowedUnits[self.Instance.Name] and table.find(UnitAllowedUnits[self.Instance.Name], UnitType) and Remotes.DeployUnit:FireServer(UnitType, self.Instance)
+    return Remotes.DeployUnit:FireServer(UnitType, self.Instance)
 end
 
 function Unit:Garrison()
@@ -299,7 +296,6 @@ local TeamDynamicProperties = {
             local Done = Value:FindFirstChild("Done")
             
             if Progress and Progress.Value > 0 and not Done.Value then
-                print(Value.Name)
                 table.insert(Result, Value.Name)
             end
         end
@@ -337,13 +333,118 @@ function Team.new(TeamOBJ)
 
     TeamCache[TeamOBJ] = self;
     
-    local ColorName = tostring(TeamOBJ.TeamColor)
-    
-    self.Color = TeamOBJ.TeamColor
-    self.Instance = TeamOBJ;
-    self.WorkspaceInstance = TeamsInstance:FindFirstChild(ColorName);
-    self.Stats = TeamSettings:FindFirstChild(ColorName);
-    
+    local ColorName = tostring(TeamOBJ.TeamColor);
+
+    TeamNameCache[ColorName] = self;
+
+
+    local ActualTeamname = TeamOBJ.Name self.ActualTeamname = ActualTeamname;
+    local Color = TeamOBJ.TeamColor; self.Color = Color; -- Color3
+    local Instance = TeamOBJ; self.Instance = Instance; -- TeamService Instance
+    local WorkspaceInstance =  TeamsInstance:FindFirstChild(ColorName); self.WorkspaceInstance = WorkspaceInstance; -- Workspace Instance (holds units and buildings)
+    local Stats = TeamSettings:FindFirstChild(ColorName); self.Stats = Stats  -- Stats Instance (holds stats and reseaarch etc)
+
+    local UnitDeployed = Signal.new(); self.UnitDeployed = UnitDeployed 
+    local UnitDeployedSignal = WorkspaceInstance.ChildAdded:Connect(function(Child)
+        local Torso = Child:WaitForChild("Torso", .2)
+
+        if Torso and not Torso:FindFirstChild("BuildProgress") then
+            UnitDeployed:Fire(Classes.Unit.new(Child))
+        end
+    end) AddConnection(UnitDeployedSignal);
+
+    -- local UnitGarrisoned = Signal.new(); self.UnitGarrisoned = UnitGarrisoned -- todo: intereferes with unitkilled;
+    -- local UnitDeployed_UnitGarrisonedSignal = UnitDeployed:Connect(function()
+
+    -- end)
+
+    local UnitKilled = Signal.new(); self.UnitKilled = UnitKilled
+    local UnitKilledSignal = WorkspaceInstance.ChildRemoved:Connect(function(Child)
+        local Torso = Child:FindFirstChild("Torso")
+
+        if Torso and not Torso:FindFirstChild("BuildProgress") then
+            local UnitClass = Classes.Unit.new(Child);
+            local Health = UnitClass.Health
+            
+            UnitKilled:Fire(UnitClass);
+        end
+    end); AddConnection(UnitKilledSignal)
+
+    local BuildingConstructing = Signal.new(); self.BuildingConstructing = BuildingConstructing
+    local BuildingConstructingSignal = WorkspaceInstance.ChildAdded:Connect(function(Child)
+        local Torso = Child:WaitForChild("Torso", .2)
+
+        if Torso and Torso:FindFirstChild("BuildProgress") then
+            BuildingConstructing:Fire(Classes.Building.new(Child))
+        end
+    end) AddConnection(BuildingConstructingSignal);
+
+    local BuildingDestroyed = Signal.new(); self.BuildingDestroyed = BuildingDestroyed
+    local BuildingDestroyedSignal = WorkspaceInstance.ChildRemoved:Connect(function(Child)
+        local Torso = Child:FindFirstChild("Torso")
+
+        if Torso and Torso:FindFirstChild("BuildProgress") then
+            BuildingDestroyed:Fire(Classes.Building.new(Child))
+        end
+    end); AddConnection(BuildingDestroyedSignal)
+
+
+    local ResearchTable = self.Research:GetChildren()
+
+    local ResearchDone = Signal.new(); self.ResearchDone = ResearchDone
+    local ResearchUndone = Signal.new(); self.ResearchUndone = ResearchUndone
+    local ResearchEnded = Signal.new(); self.ResearchEnded = ResearchEnded
+    local ResearchStarted = Signal.new(); self.ResearchStarted = ResearchStarted;
+    local ResearchCancelled = Signal.new(); self.ResearchCancelled = ResearchCancelled;
+    local ResearchBuildingDestroyed = Signal.new(); self.ResearchBuildingDestroyed = ResearchBuildingDestroyed;
+
+    local ProgressCache = {}
+    local PriorFinishedResearch = {}
+
+    for _, Research in ipairs(ResearchTable) do
+        local Done = Research:FindFirstChild("Done");
+        local Progress = Research:FindFirstChild("Progress");
+
+        if Done then
+            AddConnection(Done:GetPropertyChangedSignal("Value"):Connect(function()
+                local IsDone = Done.Value;
+
+                ProgressCache[Research] = false;
+                (IsDone and ResearchDone or ResearchUndone):Fire(Research.Name);
+                
+                if IsDone then
+                    PriorFinishedResearch[Research] = IsDone
+                end
+            end))
+            AddConnection(Progress:GetPropertyChangedSignal("Value"):Connect(function()
+                local ProgressValue = Progress.Value
+
+                if ProgressValue == 0 and not Done.Value then
+                    if not PriorFinishedResearch[Research] then
+                        ResearchCancelled:Fire(Research.Name);
+                    end
+
+                    if PriorFinishedResearch[Research] then
+                        ResearchBuildingDestroyed:Fire(Research);
+                        PriorFinishedResearch[Research] = false
+                    end
+                    ProgressCache[Research] = false;
+                elseif ProgressValue > 0 and not ProgressCache[Research] then
+                    ProgressCache[Research] = true;
+
+                    ResearchStarted:Fire(Research.Name);
+                end
+            end))
+        end
+    end
+
+
+    self.InternalSignals = {
+        UnitDeployedSignal = UnitDeployedSignal;
+        BuildingConstructingSignal = BuildingConstructingSignal;
+        BuildingDestroyedSignal = BuildingDestroyedSignal;
+    }
+
     return self;
 end
 
@@ -351,7 +452,9 @@ function Team:GetAllUnits()
     local Result = {};
 
     for _, Unit in pairs(self.WorkspaceInstance:GetChildren()) do
-        if not Unit:FindFirstChild("PyramidCollisionPart") then
+        local Torso = Unit:WaitForChild("Torso")
+
+        if Torso and not Torso:FindFirstChild("BuildProgress") then
             table.insert(Result, Classes.Unit.new(Unit))
         end
     end
@@ -376,10 +479,10 @@ end
 function Team:GetAllBuildings()
     local Result = {};
 
-    for _, Building in pairs(self.WorkspaceInstance:GetChildren()) do
-        if Building:FindFirstChild("PyramidCollisionPart") then
-            
-            print(Result, Classes.Building.new(Building))
+    for _, Building in ipairs(self.WorkspaceInstance:GetChildren()) do
+        local Torso = Building:FindFirstChild("Torso")
+
+        if Torso and Torso:FindFirstChild("BuildProgress") then
             table.insert(Result, Classes.Building.new(Building))
         end
     end
@@ -390,14 +493,14 @@ end
 Classes.Team = Team;
 
 local function GetLocalTeam()
-    return Team.new(LocalPlayer.Team)
+    return Classes.Team.new(LocalPlayer.Team)
 end
 
 local function GetAllTeams()
     local Result = {}
     
-    for Index, _Team in pairs(Teams:GetChildren()) do
-        table.insert(Result, Team.new(_Team));
+    for Index, Team in pairs(Teams:GetChildren()) do
+        table.insert(Result, Classes.Team.new(Team));
     end
     
     return Result
@@ -407,7 +510,7 @@ local function GetAllActiveTeams()
     local Result = {}
     
     for Index, Player in pairs(Players:GetPlayers()) do
-        table.insert(Result, Team.new(Player.Team));
+        table.insert(Result, Classes.Team.new(Player.Team));
     end
     
     return Result
