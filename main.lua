@@ -412,22 +412,19 @@ function Team.new(TeamOBJ)
                 ProgressCache[Research] = false;
                 (IsDone and ResearchDone or ResearchUndone):Fire(Research.Name);
                 
-                if IsDone then
-                    PriorFinishedResearch[Research] = IsDone
-                end
+                PriorFinishedResearch[Research] = IsDone or nil
             end))
             AddConnection(Progress:GetPropertyChangedSignal("Value"):Connect(function()
                 local ProgressValue = Progress.Value
 
                 if ProgressValue == 0 and not Done.Value then
-                    if not PriorFinishedResearch[Research] then
-                        ResearchCancelled:Fire(Research.Name);
-                    end
-
                     if PriorFinishedResearch[Research] then
                         ResearchBuildingDestroyed:Fire(Research);
                         PriorFinishedResearch[Research] = false
+                    else
+                        ResearchCancelled:Fire(Research.Name);
                     end
+                            
                     ProgressCache[Research] = false;
                 elseif ProgressValue > 0 and not ProgressCache[Research] then
                     ProgressCache[Research] = true;
