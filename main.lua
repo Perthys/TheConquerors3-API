@@ -398,7 +398,7 @@ function Team.new(TeamOBJ)
     local ColorName = tostring(TeamOBJ.TeamColor);
 
     TeamNameCache[ColorName] = self;
-    Team.Name = ColorName;
+    self.Name = ColorName;
 
     local ActualTeamname = TeamOBJ.Name self.ActualTeamname = ActualTeamname;
     local Color = TeamOBJ.TeamColor; self.Color = Color; -- Color3
