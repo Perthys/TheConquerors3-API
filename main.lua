@@ -82,21 +82,38 @@ end
 
 local BuildingCache = {}
 
-function Building.new(BuilingObject)
-    local self = BuildingCache[BuilingObject] or setmetatable({}, Building)
+function Building.new(BuildingObject)
+    local self = BuildingCache[BuildingObject] or setmetatable({}, Building)
     
-    BuildingCache[BuilingObject] = self;
+    BuildingCache[BuildingObject] = self;
     
-    local Torso = BuilingObject:FindFirstChild("Torso");
+    local Torso = BuildingObject:FindFirstChild("Torso");
     
-    self.Type = BuilingObject.Name;
-    self.Instance = BuilingObject;
+    self.Name = BuildingObject.Name;
+    self.Type = BuildingObject.Name;
+    self.Instance = BuildingObject;
     self.Torso = Torso;
     self.InternalSignals = {
-        Destroying = AddConnection(BuilingObject.Destroying:Connect(function()
+        Destroying = AddConnection(BuildingObject.Destroying:Connect(function()
             self:Destroy();
         end))
     };
+
+    local Producing = Torso:FindFirstChild("Producing")
+
+    if Producing then
+        self.Producable = true;
+
+        local UnitConstructing = Signal.new(); self.UnitConstructing = UnitConstructing;
+        
+        AddConnection(Producing.ChildAdded:Connect(function(Object)
+            local Team = Object:WaitForChild("Team", .2);
+            local TeamObject = TeamNameCache[Team.Value.Name]
+
+            TeamObject.UnitConstructing:Fire(self, Object.Name)
+            UnitConstructing:Fire(TeamObject, Object.Name);
+        end))
+    end
 
     return self
 end
@@ -214,6 +231,7 @@ function Unit.new(UnitObject)
     
     local Torso = UnitObject:FindFirstChild("Torso");
     
+    self.Name = UnitObject.Name;
     self.Type = UnitObject.Name;
     self.Instance = UnitObject;
     self.Torso = Torso;
@@ -222,6 +240,38 @@ function Unit.new(UnitObject)
             UnitCache[UnitObject]:Disconnect();
         end))
     };
+
+    if self.Name:lower():find("missile") then
+        self.IsMissile = true;
+
+        local Launched = Signal.new(); self.Launched = Launched;
+
+        local MissileAlreadyFired = Torso:FindFirstChild("MissileAlreadyFired");
+
+        AddConnection(MissileAlreadyFired:GetPropertyChangedSignal("Value"):Connect(function()
+            if MissileAlreadyFired.Value then   
+                Launched:Fire();
+            end
+        end))
+    end
+
+    local Producing = Torso:FindFirstChild("Producing")
+
+    if Producing then
+        self.Producable = true;
+
+        local UnitConstructing = Signal.new(); self.UnitConstructing = UnitConstructing;
+        
+        AddConnection(Producing.ChildAdded:Connect(function(Object)
+            local Team = Object:WaitForChild("Team", .2);
+            local TeamObject = TeamNameCache[Team.Value.Name]
+
+            TeamObject.UnitConstructing:Fire(self, Object.Name)
+            UnitConstructing:Fire(TeamObject, Object.Name);
+        end))
+    end
+    
+    
     
     return self;
 end
@@ -257,6 +307,18 @@ local TeamDynamicProperties = {
     end;
     ["Units"] = function(self)
         return self:GetAllUnits();
+    end;
+    ["Missiles"] = function(self)
+        local Missiles = {};
+
+        for _, Missile in ipairs(self.Units) do
+            if Missile.Name:lower():find("missile") then
+                
+                table.insert(Missiles, Missile);
+            end
+        end
+
+        return Missiles;
     end;
     ["Buildings"] = function(self)
         return self:GetAllBuildings();
@@ -336,7 +398,7 @@ function Team.new(TeamOBJ)
     local ColorName = tostring(TeamOBJ.TeamColor);
 
     TeamNameCache[ColorName] = self;
-
+    Team.Name = ColorName;
 
     local ActualTeamname = TeamOBJ.Name self.ActualTeamname = ActualTeamname;
     local Color = TeamOBJ.TeamColor; self.Color = Color; -- Color3
@@ -357,6 +419,9 @@ function Team.new(TeamOBJ)
     -- local UnitDeployed_UnitGarrisonedSignal = UnitDeployed:Connect(function()
 
     -- end)
+
+    local UnitConstructing = Signal.new(); self.UnitConstructing = UnitConstructing; -- start Deploying
+
 
     local UnitKilled = Signal.new(); self.UnitKilled = UnitKilled
     local UnitKilledSignal = WorkspaceInstance.ChildRemoved:Connect(function(Child)
@@ -388,6 +453,39 @@ function Team.new(TeamOBJ)
         end
     end); AddConnection(BuildingDestroyedSignal)
 
+    local MissileLaunched = Signal.new(); self.MissileLaunched = MissileLaunched;
+    
+    for _, Unit in ipairs(self.Missiles) do
+        local Torso = Unit.Torso;
+        local MissileAlreadyFired = Torso:FindFirstChild("MissileAlreadyFired");
+
+        AddConnection(MissileAlreadyFired:GetPropertyChangedSignal("Value"):Connect(function()
+            MissileLaunched:Fire(Unit)
+        end))
+    end
+
+    AddConnection(UnitDeployed:Connect(function(Unit)
+        local Torso = Unit.Torso;
+        local MissileAlreadyFired = Torso:WaitForChild("MissileAlreadyFired", .5);
+
+        if MissileAlreadyFired then
+            AddConnection(MissileAlreadyFired:GetPropertyChangedSignal("Value"):Connect(function()
+                MissileLaunched:Fire(Unit)
+            end))
+        end
+    end))
+    
+    local MissileExploded = Signal.new(); self.MissileExploded = MissileExploded;
+
+    AddConnection(workspace.DescendantAdded:Connect(function(Object)
+        local MissileName = Object.Name;
+
+        if MissileName == "BurningSoundPart" then
+            MissileExploded:Fire("FireMissile", Object:GetPivot().Position);
+        elseif Object:FindFirstChild("NukeLight") then
+            MissileExploded:Fire("NuclearMissile", Object:GetPivot().Position);
+        end
+    end))
 
     local ResearchTable = self.Research:GetChildren()
 
@@ -410,7 +508,7 @@ function Team.new(TeamOBJ)
                 local IsDone = Done.Value;
 
                 ProgressCache[Research] = false;
-                (IsDone and ResearchDone or ResearchUndone):Fire(Research.Name);
+                (IsDone and ResearchDone or ResearchUndone):Fire(Research);
                 
                 PriorFinishedResearch[Research] = IsDone or nil
             end))
@@ -422,14 +520,14 @@ function Team.new(TeamOBJ)
                         ResearchBuildingDestroyed:Fire(Research);
                         PriorFinishedResearch[Research] = false
                     else
-                        ResearchCancelled:Fire(Research.Name);
+                        ResearchCancelled:Fire(Research);
                     end
                             
                     ProgressCache[Research] = false;
                 elseif ProgressValue > 0 and not ProgressCache[Research] then
                     ProgressCache[Research] = true;
 
-                    ResearchStarted:Fire(Research.Name);
+                    ResearchStarted:Fire(Research);
                 end
             end))
         end
