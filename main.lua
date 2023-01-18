@@ -621,6 +621,7 @@ local ConquerorsAPI = {
     Remotes = Remotes;
     RemoteFunctions = RemoteFunctions;
     TeamAPI = TeamAPI;
+    Classes = Classes;
 }
 
 local function SetUpRemotes()
