@@ -637,5 +637,6 @@ local function SetUpRemotes()
 end
 
 SetUpRemotes()
+GetAllTeams()
 
 return ConquerorsAPI
