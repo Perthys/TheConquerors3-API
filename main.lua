@@ -6,7 +6,7 @@ end
 
 shared.TheConquerorsAPISignals = {};
 
-shared.TheConquerorsAPI = {
+shared.TheConquerorsAPI = shared.TheConquerorsAPI or {
     Enabled = false;
 } 
 
@@ -619,12 +619,12 @@ local TeamAPI = {
     GetAllActiveTeams = GetAllActiveTeams;
 };
 
-local ConquerorsAPI = {
+local ConquerorsAPI = shared.ConquerorsAPI or {
     Remotes = Remotes;
     RemoteFunctions = RemoteFunctions;
     TeamAPI = TeamAPI;
     Classes = Classes;
-}
+} shared.ConquerorsAPI = ConquerorsAPI;
 
 local function SetUpRemotes()
     for Index, Value in pairs(ReplicatedStorage:GetDescendants()) do
