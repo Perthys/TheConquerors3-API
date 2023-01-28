@@ -237,7 +237,9 @@ function Unit.new(UnitObject)
     self.Torso = Torso;
     self.InternalSignals = {
         Destroying = AddConnection(UnitObject.Destroying:Connect(function()
-            UnitCache[UnitObject]:Disconnect();
+            if UnitCache[UnitObject] then
+                UnitCache[UnitObject]:Disconnect();
+            end
         end))
     };
 
