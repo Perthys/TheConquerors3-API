@@ -178,7 +178,7 @@ task.spawn(function()
             UnitMovementQueue.UnWaypointed[Index] = nil;
         end
             
-        task.wait(0.5)
+        task.wait()
     end
 end)
 
