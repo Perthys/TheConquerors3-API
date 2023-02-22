@@ -628,7 +628,7 @@ local ConquerorsAPI = shared.ConquerorsAPI or {
 
 local function SetUpRemotes()
     for Index, Value in pairs(ReplicatedStorage:GetDescendants()) do
-        if Value:IsA("RemoteEvent") or Value:IsA("RemoteFunction") then
+        if Value.Parent ~= ReplicatedStorage and (Value:IsA("RemoteEvent") or Value:IsA("RemoteFunction")) then
             if RemoteEventNames[Value.Name] then
                 Remotes[RemoteEventNames[Value.Name]] = Value
             elseif RemoteFunctionsNames[Value.Name] then
