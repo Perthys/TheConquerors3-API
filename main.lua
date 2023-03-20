@@ -31,18 +31,17 @@ local EnergyCrystals = Map:FindFirstChild("EnergyCrystals");
 local OilSpots = Map:FindFirstChild("OilSpots");
 
 local RemoteEventNames = {
-    IjliIlI = "Destroy",
-    IIjljj = "SetSkin",
+    IjIjjji = "Destroy", --updated
+    llijil = "SetSkin", -- updated
     ljiIIi = "SetHover",
-    jiIIIIi = "Build",
-    iljiIjj = "DeployUnit",
-    jjlIil = "MoveUnits",
-    jIIlIlI = "Research";
-    llljii = "Chat";
-    lliIIii = "Garrison";
-    jjjiii = "CancelUnit";
+    iIiIllj = "Build", -- updated
+    IIjljj = "DeployUnit", -- updated
+    IIIiIIl = "MoveUnits", -- updated
+    ilIIIl = "Research"; -- updated
+    iIjilIl = "Chat"; -- Updated
+    ijlliii = "Garrison"; -- updated
+    ljIIIil = "CancelUnit"; -- updated
 }
-
 local RemoteFunctionsNames = {
     jjjllji = "BuyRotatingLootBox",
     IIilIII = "BuyLootBox"
