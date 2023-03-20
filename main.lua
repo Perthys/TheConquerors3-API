@@ -38,9 +38,10 @@ local RemoteEventNames = {
     IIjljj = "DeployUnit", -- updated
     IIIiIIl = "MoveUnits", -- updated
     ilIIIl = "Research"; -- updated
-    iIjilIl = "Chat"; -- Updated
+    iIjilIl = "Chat"; -- updated
     ijlliii = "Garrison"; -- updated
     ljIIIil = "CancelUnit"; -- updated
+    llIijI = "RemoveSkin"; -- updated
 }
 local RemoteFunctionsNames = {
     jjjllji = "BuyRotatingLootBox",
