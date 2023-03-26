@@ -149,7 +149,7 @@ task.spawn(function()
         for Index, Value in pairs(UnitMovementQueue.Waypointed) do
             local RequestData = {
                 ["isAWaypoint"] = true,
-                ["iIjjII"] = Value;
+                ["lijjjii"] = Value;
                 ["Position"] = table.create(#Value, Index);
             }
         
@@ -165,7 +165,7 @@ task.spawn(function()
         for Index, Value in pairs(UnitMovementQueue.UnWaypointed) do
             local RequestData = {
                 ["isAWaypoint"] = false,
-                ["iIjjII"] = Value;
+                ["lijjjii"] = Value;
                 ["Position"] = table.create(#Value, Index);
             }
         
