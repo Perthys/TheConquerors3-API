@@ -18,7 +18,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local Dump = loadstring(game:HttpGet('https://raw.githubusercontent.com/PysephWasntAvailable/Roblox-Table-To-String/main/Source.lua'))()
+local Dump = loadstring(game:HttpGet('https://raw.githubusercontent.com/Perthys/table/main/main.lua'))().dump
 local Signal = loadstring(game:HttpGet('https://gist.githubusercontent.com/stravant/8820ed7386bd1f9264396f61fc851e3d/raw/9771ee1ec040a7cdfc44ac765714ad5cf5bf6fb0/RobloxSignal.lua'))();
 
 local Map = workspace:FindFirstChild("Map");
