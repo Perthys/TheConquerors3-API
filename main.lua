@@ -118,6 +118,42 @@ function Building.new(BuildingObject)
     return self
 end
 
+function Building:Build(Type, CFrameArg)
+    local StaticVector = Vector3.new(99, 99, 9999) 
+ 
+    local function CalculateVector(Vector)
+      return StaticVector + Vector3.new(0, Vector.Y / 2, 0)
+    end
+
+    local function Raycast(StartPosition, EndPosition, RaycastParams)
+    local Expression = (StartPosition - EndPosition)
+
+    local Raycast = workspace:Raycast(StartPosition, (Expression.Unit * (Expression.Magnitude + 3)), RaycastParams)
+
+    return Raycast;
+    end
+
+     local BuildRemote = ReplicatedStorage:FindFirstChild("iIiIllj", true);
+     local Model = Units[Type];
+
+    local RaycastParams = RaycastParams.new();
+    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist;
+    RaycastParams.FilterDescendantsInstances = {Character};
+
+    local RaycastDown = Raycast(CFrameArg.Position, CFrameArg * CFrame.new(0,100,0).Position, RaycastParams);
+
+    if not RaycastDown then return end;
+
+    local Data = {
+        Type;
+        CalculateVector(Model:GetExtentsSize());
+        LocalTeam;
+        CFrame.new(RaycastDown.Position);
+    };
+
+    return BuildRemote:FireServer(unpack(Data))
+end
+
 function Building:Destroy()
     BuildingCache[self.Instance] = nil;
     return Remotes.Destroy:FireServer(self.Instance);
